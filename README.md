@@ -6,7 +6,7 @@ I built this as a personal project to explore how a small maintenance business c
 
 The idea came from a fairly common problem for small maintenance businesses. Customers may call or email with an issue while engineers are already out working on-site, which can make it difficult to respond straight away. Details may then need to be gathered manually, including which site the issue relates to, what the problem is, and who needs to follow it up.
 
-I wanted to see how much of that first stage could be automated without making the experience difficult for the customer or business.
+I wanted to see how much of that first stage could be automated without making the experience difficult for either the customer or the business.
 
 The prototype allows someone to report a maintenance issue in two ways:
 
@@ -93,17 +93,180 @@ Whether the request starts as a phone conversation or a form submission, it is c
 
 ---
 
+# Project walkthrough
+
+The screenshots below show the main parts of the working prototype, from the AI conversation through to site validation, ticket creation and automated notifications.
+
+Sensitive customer and business information has been removed from the screenshots used in this public repository.
+
+## 1. AI conversation flow
+
+![Retell AI conversation flow](assets/screenshots/retell-conversation-flow.png)
+
+The Retell AI conversation flow manages the maintenance call.
+
+It:
+
+- asks the caller for the site
+- extracts the site details
+- checks the site against the maintained site data
+- confirms the correct location
+- collects the maintenance issue
+- extracts structured fault information
+- collects caller and callback details
+- allows the caller to review or correct the request
+- sends the confirmed information into the ticket workflow
+
+This means the AI is doing more than simply having a conversation. It is collecting information that can be used as structured business data.
+
+---
+
+## 2. Site lookup workflow
+
+![Make.com site lookup workflow](assets/screenshots/make-site-lookup.png)
+
+The site lookup workflow receives the site information captured during the AI conversation.
+
+It searches the maintained Sites register in Google Sheets and returns the matching information to the voice workflow.
+
+In simple terms:
+
+```text
+Caller provides site
+        ↓
+AI extracts site information
+        ↓
+Make.com receives lookup request
+        ↓
+Google Sheets is searched
+        ↓
+Matching site is returned
+        ↓
+AI confirms the site with the caller
+```
+
+This means the AI does not need to invent customer or site information.
+
+---
+
+## 3. Site reference data
+
+![Site reference table](assets/screenshots/site-reference-table.png)
+
+The Sites table acts as the maintained reference source for customer locations.
+
+The screenshot above uses a fictional example record. Real customer site information is not included in this repository.
+
+The table contains fields such as:
+
+| Field | Purpose |
+|---|---|
+| Site ID | Unique internal identifier |
+| Site Name | Customer or organisation |
+| Branch | Branch or location where required |
+| Site Display Name | Name used when confirming the site |
+| Telephone | Stored site contact number |
+| Customer Email | Used for ticket confirmations |
+| Address | Stored site address |
+
+When the workflow identifies a site, it can retrieve trusted information from this table rather than relying entirely on what the caller has said.
+
+---
+
+## 4. Maintenance ticket workflow
+
+![Make.com maintenance ticket workflow](assets/screenshots/make-ticket-workflow.png)
+
+The main Make.com workflow receives the structured maintenance request and coordinates the rest of the process.
+
+The workflow:
+
+- prepares the ticket data
+- generates the ticket information
+- creates a row in the ticket register
+- retrieves the configured business email
+- checks the Away Mode setting
+- retrieves an alternative email when required
+- sends customer and internal notifications
+- updates the ticket record
+- returns confirmation to the calling workflow
+
+Make.com acts as the orchestration layer between the different services.
+
+---
+
+## 5. Structured ticket register
+
+![Maintenance ticket register](assets/screenshots/ticket-register.png)
+
+The information collected during the conversation is stored as a structured maintenance ticket.
+
+Instead of keeping the issue only as a phone conversation or free-text message, the workflow produces separate fields for information such as:
+
+- Ticket ID
+- date created
+- site
+- caller
+- callback telephone
+- affected system
+- reported fault
+- fault or error message
+- site impact
+- AI summary
+- status
+
+This makes the information easier to track, search, filter and use in later automation.
+
+---
+
+## 6. Customer confirmation
+
+![Customer confirmation email](assets/screenshots/customer-confirmation-email.png)
+
+Once the ticket has been created successfully, the customer receives a confirmation email.
+
+The confirmation contains information such as:
+
+- ticket reference
+- affected system
+- reported issue
+- expected follow-up time
+
+The AI does not tell the caller that a ticket has been created until the backend workflow has successfully returned confirmation.
+
+---
+
+## 7. Internal business notification
+
+![Internal maintenance notification](assets/screenshots/internal-notification-email.png)
+
+The business receives a more detailed notification containing the information needed to follow up the request.
+
+This can include:
+
+- ticket reference
+- ticket status
+- site details
+- caller details
+- callback telephone
+- affected system
+- reported fault
+- fault or error message
+- site impact
+
+Sensitive customer and business information has been redacted from the public screenshot.
+
+---
+
 ## What the AI is actually doing
 
-The voice assistant is not only having a conversation with the caller.
+One of the most important parts of the project was turning normal conversation into structured information.
 
-Its main role is to turn information provided naturally during the conversation into structured fields that can be used by the rest of the system.
-
-For example, a caller may describe a problem in their own words:
+For example, a caller may say:
 
 > “The camera at the front entrance isn't showing anything and we can't see people arriving.”
 
-The useful information can then be separated into structured fields:
+The AI can separate the useful information into fields:
 
 | Information | Structured result |
 |---|---|
@@ -115,8 +278,8 @@ Other information is collected during the same conversation:
 
 | Information | Purpose |
 |---|---|
-| Site | Identifies where the problem has occurred |
-| Site ID | Links the request to the internal site record |
+| Site | Identifies where the problem occurred |
+| Site ID | Links the request to the maintained site record |
 | Caller name | Records who reported the issue |
 | Callback number | Gives the engineer a contact number |
 | System type | Categorises the affected equipment |
@@ -125,65 +288,19 @@ Other information is collected during the same conversation:
 
 Before the ticket is created, the caller is given an opportunity to review and correct the information.
 
-The system only confirms that a maintenance ticket has been created after the backend automation successfully creates the ticket and returns confirmation.
-
 ---
 
-## Site validation and reference data
+## From unstructured to structured data
 
-I created a Sites table to act as the reference source for known customer locations.
+A key part of the project was transforming information from one form into another.
 
-The table contains fields such as:
-
-| Field | Purpose |
-|---|---|
-| Site ID | Unique internal identifier for the site |
-| Site Name | Customer or organisation |
-| Branch | Branch or location where required |
-| Site Display Name | Name used when confirming the site |
-| Telephone | Stored site contact number |
-| Customer Email | Used for ticket confirmation |
-| Address | Stored site address |
-
-The actual customer records are not included in this repository.
-
-When someone reports a fault, the system does not simply accept or invent site information.
-
-The site provided by the caller or form submission is matched against this maintained reference data.
-
-Once a site is matched, the workflow can use trusted information already stored against that location.
-
-Conceptually:
-
-```text
-Customer provides site
-        ↓
-Site register searched
-        ↓
-Matching site found
-        ↓
-Official site information retrieved
-        ↓
-Maintenance request enriched with reference data
-```
-
-This separates information the customer provides from information already maintained by the business.
-
-It also means the customer does not need to know internal values such as a Site ID.
-
----
-
-## Data transformation
-
-One of the most important parts of the project is the transformation from unstructured information into structured business data.
-
-A caller may speak naturally:
+A customer may initially provide:
 
 ```text
 "The front entrance camera is not displaying and we cannot see visitors arriving."
 ```
 
-The workflow turns that into something more structured:
+The workflow can turn that into:
 
 ```text
 System Type
@@ -196,16 +313,57 @@ Site Impact
 → Entrance cannot be monitored
 ```
 
-Once the information is structured, it becomes much easier to:
+The process can be viewed as:
 
-- store
-- search
-- filter
-- pass between systems
-- use in automation
-- report on later
+```text
+Capture
+   ↓
+Extract
+   ↓
+Validate
+   ↓
+Enrich
+   ↓
+Structure
+   ↓
+Create record
+   ↓
+Notify
+   ↓
+Track
+```
 
-This was one of the main reasons I wanted to build the prototype.
+### Capture
+
+Information is collected through the phone conversation or online form.
+
+### Extract
+
+The useful values are separated into specific fields.
+
+### Validate
+
+The site is checked against maintained reference data.
+
+### Enrich
+
+Stored information such as Site ID and customer email can be added.
+
+### Structure
+
+The information is converted into a consistent maintenance request.
+
+### Create record
+
+A maintenance ticket is created.
+
+### Notify
+
+The relevant customer and business emails are sent.
+
+### Track
+
+The ticket can then be managed using its status and resolution fields.
 
 ---
 
@@ -213,21 +371,27 @@ This was one of the main reasons I wanted to build the prototype.
 
 ### Retell AI
 
-Used for voice-based conversational intake.
+Used for conversational voice intake.
 
-The voice workflow collects the maintenance information, confirms it with the caller and passes the structured request into the automation workflow.
+Retell manages the phone conversation and extracts information from what the caller says.
+
+### Twilio
+
+Used as part of the telephony layer for the dedicated maintenance telephone number.
+
+Twilio handles the phone connection while Retell manages the AI conversation.
 
 ### Make.com
 
-Used as the automation and orchestration layer.
+Used as the main workflow automation and orchestration layer.
 
-Make.com receives the structured maintenance request and coordinates the rest of the process, including ticket creation, Google Sheets updates, business settings and email notifications.
+Make.com connects the AI, reference data, ticket register, settings and notification process.
 
 ### Google Sheets
 
-Used as a lightweight prototype data store.
+Used as a lightweight data store for the prototype.
 
-The workbook contains different logical areas for:
+The workbook contains separate areas for:
 
 - Sites
 - Tickets
@@ -236,23 +400,17 @@ The workbook contains different logical areas for:
 
 ### Google Forms
 
-Used as an alternative maintenance request channel.
-
-This allows someone to report the same type of maintenance issue without needing to call the voice assistant.
+Used as an alternative way for someone to report a maintenance issue.
 
 ### Google Apps Script
 
-Used to connect Google Form submissions to the same automation workflow used by the AI phone route.
+Used to connect form submissions to the existing ticket workflow.
 
-The script reads the form submission, looks up the selected site, adds the official site information and sends the structured request to Make.com.
-
-### Twilio
-
-Used as part of the telephony setup for the dedicated maintenance number.
+The script reads the form submission, looks up the selected site, retrieves the stored site information and sends the structured request into Make.com.
 
 ### Webhooks and JSON
 
-Used to pass structured data between systems.
+Used to pass structured information between different systems.
 
 ---
 
@@ -268,7 +426,7 @@ The Google Form collects:
 - caller name
 - callback telephone number
 
-The user does not need to enter internal site information such as a Site ID or stored customer email address.
+The user does not need to enter internal information such as a Site ID or stored customer email address.
 
 Instead, Google Apps Script retrieves that information from the Sites table.
 
@@ -292,67 +450,41 @@ Payload is sent to Make.com
 Existing ticket workflow runs
 ```
 
-This means the phone route and form route share the same backend ticket process.
+This allows both the phone route and the form route to use the same backend ticket creation process.
 
 ---
 
-## Automation workflow
+## Configurable Away Mode
 
-Make.com acts as the orchestration layer between the different parts of the prototype.
+The prototype also includes a simple Away Mode.
 
-At a high level:
+A Settings table stores values such as:
 
 ```text
-Maintenance request received
-        ↓
-Ticket information prepared
-        ↓
-Ticket added to Google Sheets
-        ↓
-Business settings retrieved
-        ↓
-Business notification sent
-        ↓
-Customer confirmation sent
-        ↓
-Away Mode checked
-        ↓
-Additional notification sent if required
-        ↓
-Confirmation returned
+Primary business email
+Away Mode
+Alternative email
 ```
 
-The workflow also includes a configurable Away Mode.
+When Away Mode is disabled:
 
-When Away Mode is enabled, an additional internal ticket notification can be sent to an alternative email address without changing the automation itself.
+```text
+Business notification
+        +
+Customer confirmation
+```
 
----
+When Away Mode is enabled:
 
-## Ticket data
+```text
+Business notification
+        +
+Customer confirmation
+        +
+Additional alternative email
+```
 
-Each maintenance request is stored as a structured ticket.
-
-The ticket register contains fields such as:
-
-| Field |
-|---|
-| Ticket ID |
-| Date Created |
-| Site ID |
-| Customer |
-| Site Name |
-| Caller Name |
-| Caller Telephone |
-| Customer Email |
-| System Type |
-| Reported Fault |
-| Fault / Error Message |
-| Site Impact |
-| Status |
-| Resolution Information |
-| Confirmation Status |
-
-The public repository does not contain live customer or ticket records.
+This means the routing behaviour can be changed through a setting rather than editing the Make.com workflow.
 
 ---
 
@@ -360,7 +492,7 @@ The public repository does not contain live customer or ticket records.
 
 A large part of the project involved testing how information moved between the different systems.
 
-Two useful examples were:
+Two useful examples were the customer email mapping issue and duplicate form submissions.
 
 ### Incorrect customer email mapping
 
@@ -368,9 +500,7 @@ During the Google Form integration, the customer email field was initially mappe
 
 This resulted in a postal address being passed into the email recipient field.
 
-I traced the data through the automation, identified the incorrect array and column mapping, and corrected the Apps Script.
-
-The debugging process was roughly:
+I traced the data through the automation:
 
 ```text
 Email fails
@@ -388,17 +518,17 @@ Find incorrect spreadsheet column index
 Correct mapping
 ```
 
-This was a useful example of why data mapping matters when connecting different systems.
+This was a useful example of why data mapping is important when connecting different systems.
 
 ### Duplicate ticket creation
 
 During another test, one form submission created two identical maintenance tickets.
 
-The ticket creation logic itself was working correctly.
+The ticket-generation logic itself was working correctly.
 
-The issue was traced to two identical Google Apps Script form submission triggers running at the same time.
+The issue was traced to two identical Google Apps Script form submission triggers.
 
-The result was effectively:
+The result was:
 
 ```text
 One form submission
@@ -412,7 +542,7 @@ Two Make.com requests
 Two tickets
 ```
 
-Removing the duplicate trigger restored the expected behaviour:
+Removing the duplicate trigger restored the intended behaviour:
 
 ```text
 One form submission
@@ -426,7 +556,7 @@ One automation execution
 One ticket
 ```
 
-These issues helped reinforce the importance of tracing both data and events through an end-to-end workflow.
+These issues reinforced the importance of tracing both data and events through an end-to-end workflow.
 
 ---
 
@@ -434,17 +564,17 @@ These issues helped reinforce the importance of tracing both data and events thr
 
 The prototype deals with maintenance requests that can involve security and life-safety systems.
 
-The voice workflow was therefore deliberately restricted.
+The AI was therefore deliberately restricted.
 
-The AI is not intended to:
+The voice assistant is not intended to:
 
 - provide alarm or engineer codes
 - reveal passwords or security credentials
-- explain how to bypass or defeat a security system
-- give instructions for disabling security or life-safety equipment
+- explain how to bypass a security system
+- provide instructions for disabling security or life-safety equipment
 - invent missing site information
 
-The AI's role is maintenance intake and ticket creation rather than detailed technical or security troubleshooting.
+The AI's role is maintenance intake and ticket creation rather than detailed technical troubleshooting.
 
 The system also avoids confirming that a ticket has been created until the backend automation has successfully returned a ticket reference.
 
@@ -454,7 +584,7 @@ The system also avoids confirming that a ticket has been created until the backe
 
 This project is a personal proof of concept rather than a production deployment.
 
-Tools such as Google Sheets and Google Forms were useful because they allowed me to build and test the complete workflow quickly and at relatively low cost.
+Tools such as Google Sheets, Google Forms and Make.com were useful because they allowed me to build and test the complete workflow quickly and at relatively low cost.
 
 For a production implementation, I would review areas such as:
 
@@ -511,6 +641,7 @@ The current prototype successfully supports:
 - site validation
 - structured fault capture
 - callback number capture
+- caller review and corrections
 - ticket creation
 - customer and business email notifications
 - configurable away-email routing
@@ -518,36 +649,38 @@ The current prototype successfully supports:
 
 ---
 
-## Documentation
+## Detailed documentation
 
-More detailed technical documentation is being added in the `docs` folder.
+Additional technical documentation is available in the `docs` folder.
 
-Planned and completed documentation includes:
+Current and planned documentation includes:
 
-- system architecture
-- voice AI workflow
-- Google Form integration
-- technical glossary
-- testing and debugging
-- production considerations
-- lessons learned
+- [System Architecture](docs/architecture.md)
+- [Google Form Integration](docs/form-integration.md)
+- [Technical Glossary](docs/technical-glossary.md)
+- Voice AI Workflow
+- Testing and Debugging
+- Production Considerations
+- Lessons Learned
 
 ---
 
-## Walkthrough video
+## Video walkthrough
 
 A short walkthrough video will be added to this repository.
 
-The walkthrough will demonstrate:
+The video will demonstrate:
 
-- the AI maintenance call
+- the AI answering a maintenance call
 - site identification and validation
+- natural-language fault reporting
 - structured information capture
 - ticket creation
-- automated notifications
-- how the different parts of the workflow connect
+- customer confirmation
+- internal business notification
+- how the different parts of the architecture work together
 
-The walkthrough will not expose live customer information, credentials or private integration endpoints.
+The walkthrough will use a controlled demonstration and will not expose customer information, credentials or private integration endpoints.
 
 ---
 
@@ -555,4 +688,6 @@ The walkthrough will not expose live customer information, credentials or privat
 
 This repository documents the design and implementation of the prototype without publishing customer or business-sensitive information.
 
-Real customer names, contact details, addresses, maintenance records, call recordings, credentials, webhook URLs and integration secrets are excluded or redacted.
+Real customer names, addresses, telephone numbers, email addresses, maintenance records, call recordings, webhook URLs, credentials and integration secrets are intentionally excluded or redacted.
+
+Where screenshots are included, sensitive information has been removed before publication.
