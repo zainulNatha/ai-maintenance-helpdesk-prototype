@@ -76,15 +76,21 @@ Customer submits maintenance form
         ↓
 Google Apps Script runs automatically
         ↓
+Form answers are read
+        ↓
 Selected site is matched against the Sites register
         ↓
-Stored site information is added to the form data
+Official site information is retrieved
         ↓
-Structured data is sent to the same automation workflow
+Form data and reference data are combined
         ↓
-Maintenance ticket is created
+Structured JSON payload is created
         ↓
-Business and customer notifications are sent
+Payload is sent to Make.com
+        ↓
+Existing ticket workflow runs
+        ↓
+Ticket is stored and notifications are sent
 ```
 
 The main design decision was to avoid building separate ticketing processes for each input method.
@@ -105,19 +111,9 @@ Sensitive customer and business information has been removed from the screenshot
 
 The Retell AI conversation flow manages the maintenance call.
 
-It:
+It identifies the site, collects the maintenance issue, extracts structured fault information, records caller details, allows corrections and sends the confirmed request into the ticket workflow.
 
-- asks the caller for the site
-- extracts the site details
-- checks the site against the maintained site data
-- confirms the correct location
-- collects the maintenance issue
-- extracts structured fault information
-- collects caller and callback details
-- allows the caller to review or correct the request
-- sends the confirmed information into the ticket workflow
-
-This means the AI is doing more than simply having a conversation. It is collecting information that can be used as structured business data.
+The AI is therefore doing more than simply having a conversation. It is collecting information that can be used as structured business data.
 
 ---
 
@@ -128,8 +124,6 @@ This means the AI is doing more than simply having a conversation. It is collect
 The site lookup workflow receives the site information captured during the AI conversation.
 
 It searches the maintained Sites register in Google Sheets and returns the matching information to the voice workflow.
-
-In simple terms:
 
 ```text
 Caller provides site
@@ -157,8 +151,6 @@ The Sites table acts as the maintained reference source for customer locations.
 
 The screenshot above uses a fictional example record. Real customer site information is not included in this repository.
 
-The table contains fields such as:
-
 | Field | Purpose |
 |---|---|
 | Site ID | Unique internal identifier |
@@ -179,17 +171,7 @@ When the workflow identifies a site, it can retrieve trusted information from th
 
 The main Make.com workflow receives the structured maintenance request and coordinates the rest of the process.
 
-The workflow:
-
-- prepares the ticket data
-- generates the ticket information
-- creates a row in the ticket register
-- retrieves the configured business email
-- checks the Away Mode setting
-- retrieves an alternative email when required
-- sends customer and internal notifications
-- updates the ticket record
-- returns confirmation to the calling workflow
+It prepares the ticket data, creates the record in Google Sheets, retrieves business settings, checks Away Mode, sends notifications and returns confirmation to the calling workflow.
 
 Make.com acts as the orchestration layer between the different services.
 
@@ -223,14 +205,7 @@ This makes the information easier to track, search, filter and use in later auto
 
 ![Customer confirmation email](assets/screenshots/customer-confirmation-email.png)
 
-Once the ticket has been created successfully, the customer receives a confirmation email.
-
-The confirmation contains information such as:
-
-- ticket reference
-- affected system
-- reported issue
-- expected follow-up time
+Once the ticket has been created successfully, the customer receives a confirmation email containing the ticket reference, affected system, reported issue and expected follow-up time.
 
 The AI does not tell the caller that a ticket has been created until the backend workflow has successfully returned confirmation.
 
@@ -241,18 +216,6 @@ The AI does not tell the caller that a ticket has been created until the backend
 ![Internal maintenance notification](assets/screenshots/internal-notification-email.png)
 
 The business receives a more detailed notification containing the information needed to follow up the request.
-
-This can include:
-
-- ticket reference
-- ticket status
-- site details
-- caller details
-- callback telephone
-- affected system
-- reported fault
-- fault or error message
-- site impact
 
 Sensitive customer and business information has been redacted from the public screenshot.
 
@@ -274,17 +237,7 @@ The AI can separate the useful information into fields:
 | Reported fault | Front entrance camera not displaying |
 | Site impact | Entrance cannot be monitored |
 
-Other information is collected during the same conversation:
-
-| Information | Purpose |
-|---|---|
-| Site | Identifies where the problem occurred |
-| Site ID | Links the request to the maintained site record |
-| Caller name | Records who reported the issue |
-| Callback number | Gives the engineer a contact number |
-| System type | Categorises the affected equipment |
-| Reported fault | Records the maintenance problem |
-| Site impact | Captures how the issue is affecting the customer |
+Other information is collected during the same conversation, including the site, Site ID, caller name and callback number.
 
 Before the ticket is created, the caller is given an opportunity to review and correct the information.
 
@@ -313,7 +266,7 @@ Site Impact
 → Entrance cannot be monitored
 ```
 
-The process can be viewed as:
+The overall data flow can be viewed as:
 
 ```text
 Capture
@@ -333,37 +286,7 @@ Notify
 Track
 ```
 
-### Capture
-
-Information is collected through the phone conversation or online form.
-
-### Extract
-
-The useful values are separated into specific fields.
-
-### Validate
-
-The site is checked against maintained reference data.
-
-### Enrich
-
-Stored information such as Site ID and customer email can be added.
-
-### Structure
-
-The information is converted into a consistent maintenance request.
-
-### Create record
-
-A maintenance ticket is created.
-
-### Notify
-
-The relevant customer and business emails are sent.
-
-### Track
-
-The ticket can then be managed using its status and resolution fields.
+This was one of the main areas I wanted to explore through the project.
 
 ---
 
@@ -373,13 +296,13 @@ The ticket can then be managed using its status and resolution fields.
 
 Used for conversational voice intake.
 
-Retell manages the phone conversation and extracts information from what the caller says.
+Retell manages the phone conversation and extracts structured information from what the caller says.
 
 ### Twilio
 
 Used as part of the telephony layer for the dedicated maintenance telephone number.
 
-Twilio handles the phone connection while Retell manages the AI conversation.
+Twilio handles the telephone connection while Retell manages the AI conversation.
 
 ### Make.com
 
@@ -406,8 +329,6 @@ Used as an alternative way for someone to report a maintenance issue.
 
 Used to connect form submissions to the existing ticket workflow.
 
-The script reads the form submission, looks up the selected site, retrieves the stored site information and sends the structured request into Make.com.
-
 ### Webhooks and JSON
 
 Used to pass structured information between different systems.
@@ -416,7 +337,9 @@ Used to pass structured information between different systems.
 
 ## Google Form route
 
-The Google Form collects:
+I also added a Google Form as an alternative way to report a maintenance issue.
+
+The form collects information the user would normally know, such as:
 
 - site
 - affected system
@@ -428,16 +351,18 @@ The Google Form collects:
 
 The user does not need to enter internal information such as a Site ID or stored customer email address.
 
-Instead, Google Apps Script retrieves that information from the Sites table.
+Instead, Google Apps Script uses the selected site to look up the official record in the maintained Sites table.
 
 The process is:
 
 ```text
 Form submitted
         ↓
-Apps Script reads the response
+Google Apps Script runs automatically
         ↓
-Selected site is found in the Sites table
+Form answers are read
+        ↓
+Selected site is matched against the Sites table
         ↓
 Official site information is retrieved
         ↓
@@ -448,9 +373,15 @@ Structured JSON payload is created
 Payload is sent to Make.com
         ↓
 Existing ticket workflow runs
+        ↓
+Ticket is stored and notifications are sent
 ```
 
-This allows both the phone route and the form route to use the same backend ticket creation process.
+This means the phone and form routes use different ways of collecting information, but both are converted into the same type of structured maintenance request before reaching the main ticket workflow.
+
+This was useful because I only needed to maintain one core ticket creation process rather than building a separate backend workflow for each input method.
+
+For the full technical breakdown, including the Apps Script, trigger setup, field mapping and debugging examples, see [Google Form Integration](docs/form-integration.md).
 
 ---
 
@@ -524,11 +455,7 @@ This was a useful example of why data mapping is important when connecting diffe
 
 During another test, one form submission created two identical maintenance tickets.
 
-The ticket-generation logic itself was working correctly.
-
 The issue was traced to two identical Google Apps Script form submission triggers.
-
-The result was:
 
 ```text
 One form submission
@@ -651,17 +578,15 @@ The current prototype successfully supports:
 
 ## Detailed documentation
 
-Additional technical documentation is available in the `docs` folder.
-
-Current and planned documentation includes:
+More detailed technical documentation is available in the `docs` folder:
 
 - [System Architecture](docs/architecture.md)
 - [Google Form Integration](docs/form-integration.md)
 - [Technical Glossary](docs/technical-glossary.md)
-- Voice AI Workflow
-- Testing and Debugging
-- Production Considerations
-- Lessons Learned
+
+The Google Form documentation contains the detailed Apps Script explanation, including how the form values are read, how the Sites table is searched, how the payload is created, how the webhook request is sent and how the integration was debugged.
+
+Further documentation may be added for the voice AI workflow, testing decisions and production considerations.
 
 ---
 
